@@ -1,0 +1,67 @@
+version: '3.7'
+services:
+    keycloak:
+        image: quay.io/keycloak/keycloak:19.0.1
+        environment:
+            - DB_USER=postgres
+            - DB_PASSWORD=password
+            - DB_ADDR=postgres
+            - DB_VENDOR=POSTGRES
+            - DB_DATABASE=keycloak
+            - KEYCLOAK_USER=admin
+            - KEYCLOAK_PASSWORD=admin
+            - KEYCLOAK_ADMIN=admin
+            - KEYCLOAK_ADMIN_PASSWORD=admin
+            - KC_HOSTNAME=keycloak
+            - KC_HTTPS_CERTIFICATE_FILE=/opt/keycloak/certs/bundle.crt
+            - KC_HTTPS_CERTIFICATE_KEY_FILE=/opt/keycloak/certs/server.key
+        networks:
+          datamakern:
+            aliases:
+              - keycloak
+        depends_on:
+          postgres:
+            condition: service_healthy
+        entrypoint:
+            - /opt/keycloak/bin/kc.sh
+        command:
+            -  start
+            -  --db-password=password
+            -  --db-username=postgres
+            -  --db=postgres
+            -  --db-url=jdbc:postgresql://postgres:5432/keycloak
+            -  --features=docker,token-exchange
+        volumes:
+            - ./certs:/opt/keycloak/certs
+        ports:
+            - "8080:8080"
+            - "8443:8443"
+
+    postgres:
+      image: postgres:11.7
+      environment:
+          - POSTGRES_USER=postgres
+          - POSTGRES_PASSWORD=password
+          - POSTGRES_DB=postgres
+          - PGDATA=/var/lib/postgresql/data/pgdata
+          - APP=postgres 
+      ports:
+        - "5432:5432"
+      volumes:
+        - ./data/postgres:/var/lib/postgresql/data
+        - ./init.d:/docker-entrypoint-initdb.d
+      container_name: postgres
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U postgres"]
+        interval: "20s"
+        timeout: "20s"
+        retries: 3
+      networks:
+        datamakern:
+          aliases:
+            - postgres
+
+
+networks:
+  datamakern: {}
+
